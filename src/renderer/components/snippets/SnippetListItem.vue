@@ -31,6 +31,7 @@
 import { mapGetters } from 'vuex'
 import { format, isSameDay } from 'date-fns'
 import { menu } from '@@/lib'
+import { track } from '@@/lib/analytics'
 
 export default {
   name: 'SnippetListItem',
@@ -62,7 +63,12 @@ export default {
   },
 
   computed: {
-    ...mapGetters('snippets', ['selected']),
+    ...mapGetters('snippets', [
+      'snippets',
+      'selected',
+      'snippetsBySort',
+      'sort'
+    ]),
     isSelected () {
       if (!this.selected) return null
 
@@ -107,21 +113,82 @@ export default {
             }
 
             this.$store.dispatch('snippets/updateSnippet', { id, payload })
+            track('snippets/add-to-favorites')
           }
         },
         {
           type: 'separator'
         },
         {
-          label: 'Delete',
+          label: 'Duplicate',
           click: () => {
+            const snippet = Object.assign({}, this.model)
+            snippet.createAt = new Date()
+            snippet.updatedAt = new Date()
+            delete snippet._id
+
+            this.$store.dispatch('snippets/addSnippet', {
+              folderId: snippet.folderId,
+              snippet
+            })
+            track('snippets/duplicate')
+          }
+        },
+        {
+          label: 'Delete',
+          click: async () => {
             const id = this.model._id
             const payload = {
               $set: { isDeleted: true }
             }
 
-            this.$store.dispatch('snippets/updateSnippet', { id, payload })
+            await this.$store.dispatch('snippets/updateSnippet', {
+              id,
+              payload
+            })
+            const firstSnippet = this.snippetsBySort[0]
+
+            if (firstSnippet) {
+              this.$store.dispatch('snippets/setSelected', firstSnippet)
+            }
+
+            track('snippets/delete')
           }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'Sort By',
+          submenu: [
+            {
+              label: 'Date Modified',
+              type: 'radio',
+              checked: this.sort === 'updateAt',
+              click: () => {
+                this.$store.dispatch('snippets/setSort', 'updateAt')
+                track('snippets/sort/updateAt')
+              }
+            },
+            {
+              label: 'Date Created',
+              type: 'radio',
+              checked: this.sort === 'createAt',
+              click: () => {
+                this.$store.dispatch('snippets/setSort', 'createAt')
+                track('snippets/sort/createAt')
+              }
+            },
+            {
+              label: 'Name',
+              type: 'radio',
+              checked: this.sort === 'name',
+              click: () => {
+                this.$store.dispatch('snippets/setSort', 'name')
+                track('snippets/sort/name')
+              }
+            }
+          ]
         }
       ])
       contextMenu.addListener('menu-will-close', () => {

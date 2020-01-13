@@ -12,7 +12,10 @@
       />
       <div class="snippet-view__actions">
         <div class="snippet-view__actions-item">
-          <AppIcon name="clipboard" />
+          <AppIcon
+            name="clipboard"
+            @click="onCopySnippet"
+          />
         </div>
       </div>
       <div class="snippet-view__actions">
@@ -56,7 +59,7 @@ import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import SnippetTabs from '@/components/snippets/SnippetTabs.vue'
 import SnippetTabsPane from '@/components/snippets/SnippetTabsPane.vue'
 import { menu, dialog } from '@@/lib'
-import EventBus from '@/event-bus'
+import { track } from '@@/lib/analytics'
 
 export default {
   name: 'SnippetView',
@@ -91,8 +94,11 @@ export default {
       this.active = 0
     })
     this.setWatcher()
-    EventBus.$on('snippet:new-fragment', () => {
+    this.$bus.$on('snippet:new-fragment', () => {
       this.onAddTab()
+    })
+    this.$bus.$on('menu:copy-snippet', () => {
+      this.onCopySnippet()
     })
   },
 
@@ -138,6 +144,7 @@ export default {
       }
       this.localSnippet.content.push(fragment)
       this.active = index
+      track('snippets/new-fragment')
     },
     onEditTab (v, index) {
       this.localSnippet.content[index].label = v
@@ -147,6 +154,7 @@ export default {
       if (this.active === index) {
         this.active = 0
       }
+      track('snippets/delete-fragment')
     },
     onTabContext (fragment) {
       menu.popup([
@@ -176,6 +184,16 @@ export default {
           }
         }
       ])
+    },
+    async onCopySnippet () {
+      const snippet = this.selected.content[this.active].value
+      await navigator.clipboard.writeText(snippet)
+      if (process.platform === 'darwin' || process.platform === 'linux') {
+        /* eslint-disable no-new */
+        new Notification('massCode', {
+          body: 'Snippet is copied'
+        })
+      }
     }
   }
 }
@@ -219,6 +237,7 @@ export default {
   }
 }
 .snippet-name {
+  width: 100%;
   input {
     font-size: var(--text-lg);
     font-weight: 600;

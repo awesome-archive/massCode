@@ -12,7 +12,7 @@
     >
       <TransitionGroup :name="animation">
         <SnippetListItem
-          v-for="(i, index) in sortedSnippets"
+          v-for="(i, index) in snippetsList"
           :id="i.label"
           :key="i._id"
           :index="index"
@@ -33,6 +33,7 @@ import SnippetListItem from './SnippetListItem.vue'
 import ActionBar from './ActionBar.vue'
 import interact from 'interactjs'
 import { mapState, mapGetters } from 'vuex'
+import PerfectScrollbar from 'perfect-scrollbar'
 
 export default {
   name: 'SnippetList',
@@ -45,16 +46,21 @@ export default {
   data () {
     return {
       focus: false,
-      animation: ''
+      animation: '',
+      ps: null
     }
   },
 
   computed: {
     ...mapState(['app']),
-    ...mapGetters('snippets', ['snippets']),
+    ...mapGetters('snippets', [
+      'snippetsSearched',
+      'isSearched',
+      'snippetsBySort'
+    ]),
     ...mapGetters('folders', ['selectedId', 'selectedIds', 'allSnippetsId']),
-    sortedSnippets () {
-      return [...this.snippets].sort((a, b) => b.updatedAt - a.updatedAt)
+    snippetsList () {
+      return this.isSearched ? this.snippetsSearched : this.snippetsBySort
     }
   },
 
@@ -76,12 +82,13 @@ export default {
       }
 
       await this.$store.dispatch('snippets/getSnippets', query)
-      const firstSnippet = this.sortedSnippets[0]
+      const firstSnippet = this.snippetsList[0]
       this.$store.commit('snippets/SET_SELECTED', firstSnippet)
     },
-    sortedSnippets () {
+    snippetsList () {
       this.$nextTick(() => {
         this.animation = 'list'
+        this.ps.update()
       })
     }
   },
@@ -99,9 +106,14 @@ export default {
         this.$store.dispatch('app/setSnippetListWidth', width)
       }
     })
+    this.initPS()
   },
 
-  methods: {}
+  methods: {
+    initPS () {
+      this.ps = new PerfectScrollbar(this.$refs.wrapper)
+    }
+  }
 }
 </script>
 
@@ -119,6 +131,7 @@ export default {
   }
   &__wrapper {
     overflow-y: scroll;
+    position: relative;
     height: calc(100vh - var(--action-bar-height));
   }
 }

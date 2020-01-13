@@ -4,29 +4,19 @@
     :data-theme="app.theme"
   >
     <div class="app-title-bar" />
-    <template v-if="init">
-      <KeepAlive>
-        <Component :is="view" />
-      </KeepAlive>
-    </template>
+    <RouterView />
   </div>
 </template>
 
 <script>
-import MainView from './views/Main.vue'
-import PreferencesView from './views/Preferences.vue'
 import shortid from 'shortid'
 import { mapGetters, mapState } from 'vuex'
 import { defaultLibraryQuery } from '@/util/helpers'
+import '@/datastore'
 import '@/lib/ipcRenderer'
 
 export default {
   name: 'App',
-
-  components: {
-    MainView,
-    PreferencesView
-  },
 
   data () {
     return {
@@ -36,14 +26,7 @@ export default {
 
   computed: {
     ...mapState(['app']),
-    ...mapGetters('folders', ['selectedIds']),
-    view () {
-      if (this.app.view === 'main') {
-        return 'MainView'
-      } else {
-        return 'PreferencesView'
-      }
-    }
+    ...mapGetters('folders', ['selectedIds'])
   },
 
   created () {
@@ -59,6 +42,7 @@ export default {
       const selectedFolderId = this.$electronStore.get('selectedFolderId')
       const selectedSnippetId = this.$electronStore.get('selectedSnippetId')
       const theme = this.$electronStore.get('theme')
+      const snippetsSort = this.$electronStore.get('snippetsSort')
 
       if (snippetListWidth) {
         this.$store.commit('app/SET_SNIPPET_LIST_WIDTH', snippetListWidth)
@@ -92,7 +76,11 @@ export default {
         this.$store.dispatch('app/setTheme', theme)
       }
 
-      this.init = true
+      if (snippetsSort) {
+        this.$store.dispatch('snippets/setSort', snippetsSort)
+      }
+
+      this.$store.commit('app/SET_INIT', true)
     },
     async setDefaultDataStore () {
       const defaultFolder = {

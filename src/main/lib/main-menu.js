@@ -1,12 +1,14 @@
 import { app, shell } from 'electron'
 const { version, author } = require('../../../package.json')
 
-app.setAboutPanelOptions({
-  applicationName: 'massCode',
-  applicationVersion: version,
-  version,
-  copyright: author
-})
+if (process.platform !== 'win32') {
+  app.setAboutPanelOptions({
+    applicationName: 'massCode',
+    applicationVersion: version,
+    version,
+    copyright: author
+  })
+}
 
 export default mainWindow => {
   const massCode = {
@@ -116,6 +118,29 @@ export default mainWindow => {
         label: 'Select All',
         accelerator: 'CommandOrControl+A',
         selector: 'selectAll:'
+      },
+      {
+        type: 'separator'
+      },
+      {
+        label: 'Find',
+        accelerator: 'CommandOrControl+F',
+        click () {
+          mainWindow.webContents.send('menu:find-snippets')
+        }
+      }
+    ]
+  }
+
+  const editor = {
+    label: 'Editor',
+    submenu: [
+      {
+        label: 'Copy Snippet to Clipboard',
+        accelerator: 'Shift+CommandOrControl+C',
+        click () {
+          mainWindow.webContents.send('menu:copy-snippet')
+        }
       }
     ]
   }
@@ -156,5 +181,5 @@ export default mainWindow => {
     ]
   }
 
-  return [massCode, file, edit, window, help]
+  return [massCode, file, edit, editor, window, help]
 }

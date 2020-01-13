@@ -38,6 +38,7 @@
 import { mapGetters } from 'vuex'
 import { menu, dialog } from '@@/lib'
 import languages from '@/components/editor/languages'
+import { track } from '@@/lib/analytics'
 
 export default {
   name: 'SidebarListItem',
@@ -85,13 +86,13 @@ export default {
           i.type = 'radio'
           i.checked = i.value === this.model.defaultLanguage
           i.click = e => {
-            // this.$emit('change:lang', e.value)
             const id = this.id
             const payload = e.value
             this.$store.dispatch('folders/updateFolderLanguage', {
               id,
               payload
             })
+            track(`folders/set-default-language/${e.label}`)
           }
           return i
         })
@@ -155,8 +156,8 @@ export default {
               cancelId: 1
             })
             if (buttonId === 0) {
-              console.log('delete folder')
               this.$store.dispatch('folders/deleteFolder', this.id)
+              track('folders/delete')
             }
           }
         },
@@ -185,8 +186,8 @@ export default {
               cancelId: 1
             })
             if (buttonId === 0) {
-              console.log('delete trash')
               this.$store.dispatch('snippets/emptyTrash')
+              track('snippets/empty-trash')
             }
           }
         }

@@ -27,8 +27,9 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { emmetHTML } from 'emmet-monaco-es'
 import { menu } from '@@/lib'
-import { mapState } from 'vuex'
+import { mapState, mapGetters } from 'vuex'
 import languages from './languages'
+import { track } from '@@/lib/analytics'
 
 export default {
   name: 'MonacoEditor',
@@ -59,12 +60,14 @@ export default {
       position: {
         lineNumber: 0,
         column: 0
-      }
+      },
+      decorations: []
     }
   },
 
   computed: {
     ...mapState(['app']),
+    ...mapGetters('snippets', ['searchQuery']),
     languagesMenu () {
       return languages
         .map(i => {
@@ -73,6 +76,7 @@ export default {
           i.click = e => {
             this.$emit('change:lang', e.value)
             this.setLanguage(e.value)
+            track(`snippets/set-language/${e.label}`)
           }
           return i
         })
@@ -108,14 +112,19 @@ export default {
 
   mounted () {
     this.init()
+    this.searchHighlight(this.searchQuery)
     this.$watch('value', newVal => {
       if (newVal !== this.editor.getValue()) {
         this.editor.setValue(newVal)
         this.editor.setPosition({ lineNumber: 0, column: 0 })
+        this.searchHighlight(this.searchQuery)
       }
     })
     this.$watch('language', newVal => {
       this.setLanguage(newVal)
+    })
+    this.$watch('searchQuery', newVal => {
+      this.searchHighlight(newVal)
     })
     if (this.isTabs) {
       const { height, width } = this.$refs.wrapper.getBoundingClientRect()
@@ -196,7 +205,7 @@ export default {
         rules: [{ background: 'EDF9FA' }],
         colors: {
           'editor.background': '#ffffff',
-          'editor.lineHighlightBackground': '#f7f7f7',
+          'editor.lineHighlightBackground': '#ffffff',
           'editorLineNumber.foreground': '#525252',
           'editorSuggestWidget.foreground': '#262626',
           'editorSuggestWidget.background': '#f7f7f7',
@@ -226,10 +235,23 @@ export default {
     calculateHeight () {
       window.addEventListener('resize', () => {
         const { height, width } = this.$refs.editor.getBoundingClientRect()
-        console.log(height)
         const footerHeight = 0
         this.editor.layout({ width, height: height - footerHeight })
       })
+    },
+    searchHighlight (query) {
+      const model = this.editor.getModel()
+      const matches = model.findMatches(query, false, true, false)
+      const newDecorations = matches.map(i => {
+        return {
+          range: i.range,
+          options: { inlineClassName: 'marked' }
+        }
+      })
+      this.decorations = this.editor.deltaDecorations(
+        this.decorations,
+        newDecorations
+      )
     }
   }
 }
@@ -249,9 +271,17 @@ export default {
     justify-content: space-between;
     padding: 0 var(--spacing-xs);
     color: var(--color-contrast-medium);
+    .language {
+      cursor: default;
+    }
   }
   .decorationsOverviewRuler {
     width: 0 !important;
+  }
+  .marked {
+    background-color: yellow;
+    color: #000;
+    border-radius: 3px;
   }
 }
 </style>
